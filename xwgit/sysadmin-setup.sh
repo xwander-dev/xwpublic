@@ -25,11 +25,12 @@ echo -e "${CYAN}${BOLD} Setting up XwGit for AI developer: ${AI_NAME} ${NC}"
 echo -e "${CYAN}${BOLD}=========================================${NC}"
 echo ""
 
-# Create base workspace directory
-WORKSPACE_DIR="/tmp/ai-workspace"
-AI_WORKSPACE="${WORKSPACE_DIR}/${AI_NAME}-workspace"
+# Use current directory as base for workspace
+CURRENT_DIR="$(pwd)"
+WORKSPACE_DIR="${CURRENT_DIR}/.xwgit"
+AI_WORKSPACE="${CURRENT_DIR}/${AI_NAME}-workspace"
 
-echo -e "${YELLOW}Creating workspace directories...${NC}"
+echo -e "${YELLOW}Creating workspace directories in: ${CURRENT_DIR}${NC}"
 mkdir -p "${WORKSPACE_DIR}"
 mkdir -p "${AI_WORKSPACE}"
 
@@ -64,10 +65,10 @@ cd "${WORKSPACE_DIR}"
 "${WORKSPACE_DIR}/bin/xwgit" generate-code "${AI_NAME}" > "${AI_WORKSPACE}/access_code.txt"
 
 # Create easy-to-use command file
-cat > "${AI_WORKSPACE}/xwgit" << 'EOF'
+cat > "${AI_WORKSPACE}/xwgit" << EOF
 #!/bin/bash
 # Simple wrapper for xwgit
-/tmp/ai-workspace/bin/xwgit "$@"
+${WORKSPACE_DIR}/bin/xwgit "\$@"
 EOF
 chmod +x "${AI_WORKSPACE}/xwgit"
 
