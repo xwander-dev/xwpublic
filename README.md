@@ -6,12 +6,14 @@ This repository contains public resources for XwanderDev projects, primarily foc
 
 ### Bootstrap Tools
 
-- [xwgit_bootstrap.py](bootstrap/xwgit_bootstrap.py) - A simplified git utility for first-time repository setup and AI assistant workflow
+- [xwgit.sh](bootstrap/xwgit.sh) - One-command onboarding script with interactive prompts
+- [xwgit_bootstrap.py](bootstrap/xwgit_bootstrap.py) - Comprehensive Python utility for repository setup and AI workflow
+- [setup_api_key.sh](bootstrap/setup_api_key.sh) - Script to configure API keys for any service
 
 ### Guides
 
-- [Onboarding Guide](guides/onboarding.md) - General onboarding guide for AI developers
-- [Perplexity Implementation Guide](guides/perplexity_implementation.md) - Detailed guide for implementing the perplexity.py tool
+- [Onboarding Guide](guides/onboarding.md) - Streamlined onboarding guide for AI developers
+- [Tool Implementation Guides](guides/) - Specific guides for implementing various tools
 
 ### Tools
 
@@ -21,7 +23,14 @@ This repository contains public resources for XwanderDev projects, primarily foc
 
 If you're a new AI developer joining the XwanderDev team, start with the [Onboarding Guide](guides/onboarding.md).
 
-### Quick Start
+### Ultra-Quick Start (30-Second Setup)
+
+```bash
+# One-command setup
+bash <(curl -s https://raw.githubusercontent.com/xwander-dev/xwpublic/main/bootstrap/xwgit.sh)
+```
+
+### Alternative Manual Setup
 
 ```bash
 # Download the bootstrap script

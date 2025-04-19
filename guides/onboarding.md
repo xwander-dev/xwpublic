@@ -1,157 +1,152 @@
 # XwanderDev AI Developer Onboarding Guide
 
-Welcome to the XwanderDev team! This guide will help you get started with our development workflow. As an AI assistant working on XwanderDev projects, you'll need to follow our standardized processes to ensure consistency and efficiency.
+Welcome to the XwanderDev team! This guide provides a streamlined onboarding process for AI assistants working on XwanderDev projects.
 
-## Getting Started
+## Ultra-Quick Start (30-Second Setup)
 
-### 1. Bootstrap Script Setup
-
-First, download our bootstrap script:
+Run our one-command setup script:
 
 ```bash
-# Create a working directory
-mkdir xwander-project
-cd xwander-project
+bash <(curl -s https://raw.githubusercontent.com/xwander-dev/xwpublic/main/bootstrap/xwgit.sh)
+```
 
-# Download the bootstrap script
+This automated script will:
+1. Download all necessary files
+2. Prompt for GitHub token (or use from environment)
+3. Configure the repository
+4. Provide next steps
+
+## Alternative Manual Setup (2-Minute Setup)
+
+### 1. Download Bootstrap Script
+
+```bash
 curl -O https://raw.githubusercontent.com/xwander-dev/xwpublic/main/bootstrap/xwgit_bootstrap.py
 chmod +x xwgit_bootstrap.py
 ```
 
-The bootstrap script handles repository setup and provides optimized git operations for AI assistants.
-
-### 2. Initialize Your Environment
-
-Your human teammate will provide you with:
-- GitHub repository information (owner and name)
-- GitHub access token
-
-Initialize your environment with:
+### 2. One-Command Setup
 
 ```bash
 ./xwgit_bootstrap.py init --owner="xwander-dev" --repo="XwDevTools" --token="your_github_token"
 ```
 
-This will:
-- Validate your GitHub access
-- Clone the repository
-- Set up git configuration
-- Prepare your workspace
-
-### 3. Understand Your Task
-
-Your assigned task will be in a GitHub issue. Retrieve the details:
+### 3. Create Your Tool
 
 ```bash
-./xwgit_bootstrap.py issue get 1  # Replace 1 with your issue number
+./xwgit_bootstrap.py quickstart feature_name --issue=42 --description="Brief description of your tool"
 ```
 
-Read the issue carefully to understand requirements, acceptance criteria, and any specific constraints.
+### 4. Implement Your Tool
 
-## Development Workflow
+Edit the generated files in the directories created by the quickstart command, such as:
+- The main implementation file
+- Documentation files
+- Test files
 
-### 1. Create a Feature Branch
-
-Create a branch for your task:
+### 5. Finalize and Submit
 
 ```bash
-./xwgit_bootstrap.py branch create 1  # Replace 1 with your issue number
+./xwgit_bootstrap.py finalize "Implement feature with key functionality" --issue=42
 ```
 
-The script will automatically create a branch with a standardized name based on the issue.
+That's it! Your code is now committed, pushed, and a pull request has been created.
 
-### 2. Implement Your Solution
+## Key Features
 
-Develop your solution following our coding standards and project structure. Refer to existing code for patterns and conventions.
+The `xwgit_bootstrap.py` tool streamlines the entire development workflow:
 
-### 3. Commit Your Changes
+- **One-Command Setup**: Initialize repository with a single command
+- **Automatic Project Structure**: Creates directories, files, and templates
+- **Simplified Git Operations**: Handles branching, commits, and PRs
+- **API Key Management**: Standardized API key handling
+- **Consistent Documentation**: Auto-generates documentation templates
 
-When ready to commit:
+## Commands Reference
+
+### Initial Setup
 
 ```bash
-# Stage all changes
-./xwgit_bootstrap.py commit "Implement feature X" --issue=1 --all
+# Basic setup with token
+./xwgit_bootstrap.py init --owner="xwander-dev" --repo="XwDevTools" --token="your_token"
+
+# Setup with token from file
+./xwgit_bootstrap.py init --owner="xwander-dev" --repo="XwDevTools" --token-file=".env"
 ```
 
-Include the issue number to automatically link your commit to the issue.
-
-### 4. Push Your Changes
-
-Push your changes to GitHub:
+### Tool Development
 
 ```bash
+# Quick start a search tool
+./xwgit_bootstrap.py quickstart tool_name --type="search-tool" --issue=42
+
+# Quick start an API client
+./xwgit_bootstrap.py quickstart tool_name --type="api-tool" --issue=42
+```
+
+### Issue Management
+
+```bash
+# Get issue details
+./xwgit_bootstrap.py issue get 42
+
+# Comment on an issue
+./xwgit_bootstrap.py issue comment 42 "Implementation in progress. Question about X."
+```
+
+### Git Operations
+
+```bash
+# Create branch for issue
+./xwgit_bootstrap.py branch create 42
+
+# Commit changes
+./xwgit_bootstrap.py commit "Add feature X" --issue=42 --all
+
+# Push changes
 ./xwgit_bootstrap.py push
 ```
 
-### 5. Create a Pull Request
-
-When your implementation is complete:
+### Finalizing Work
 
 ```bash
-./xwgit_bootstrap.py pr create --title="Implement feature X" --issue=1
+# Finalize (stages, commits, pushes, creates PR)
+./xwgit_bootstrap.py finalize "Implement feature X" --issue=42
 ```
 
-This creates a standardized pull request linked to the original issue.
+## API Key Configuration
 
-## Using API Keys and Authentication
+Your human teammate will provide API keys as needed. The tool templates include standardized API key handling:
 
-Your human teammate will provide any necessary API keys and authentication details. These should be handled securely:
-
-1. **Never commit API keys or tokens to the repository**
-2. For local development, store keys in a `.env` file (which is gitignored)
-3. For testing, use placeholder or test keys provided by your teammate
-4. Document where keys should be placed, but don't include actual key values
-
-Example `.env` file structure:
-```
-PERPLEXITY_API_KEY=your_api_key_here
-GITHUB_TOKEN=your_github_token_here
-```
-
-Your implementation should load these from the environment:
 ```python
-import os
-api_key = os.environ.get("PERPLEXITY_API_KEY")
+# Example API key retrieval in generated code
+def get_api_key(key_name="service_name"):
+    """Get API key from environment or team config."""
+    # Try environment variable
+    api_key = os.environ.get(key_name.upper() + "_API_KEY")
+    
+    # Try .env file
+    if not api_key and os.path.exists(".env"):
+        with open(".env", "r") as f:
+            for line in f:
+                if line.startswith(key_name.upper() + "_API_KEY="):
+                    api_key = line.strip().split("=", 1)[1].strip("\"' ")
+    
+    # ... additional lookup methods ...
+    
+    return api_key
 ```
 
-## Project Documentation
+## Tool-Specific Implementation Guides
 
-Always update documentation as you develop:
+For specific tools you're assigned to implement, your team lead may provide additional tool-specific guides with detailed requirements and examples. These will be available in the `/guides` directory or provided to you directly.
 
-1. Add usage examples to README.md
-2. Create or update tool-specific documentation
-3. Document API endpoints or function signatures
-4. Include required dependencies
+## Next Steps
 
-## Communication
-
-Provide regular updates on your progress:
-
-```bash
-# Comment on your issue
-./xwgit_bootstrap.py issue comment 1 "Implemented X feature. Currently working on Y. Questions about Z."
-```
-
-When referencing files or code, use relative paths so your human teammate can easily locate them.
-
-## Need Help?
-
-If you have questions or need clarification:
-
-1. Comment on the issue with specific questions
-2. Be clear about what you need to proceed
-3. Provide context about what you've tried
-
-## For perplexity.py Implementation
-
-If you're assigned to work on the `perplexity.py` tool, refer to the specific implementation guide:
-
-```bash
-curl -O https://raw.githubusercontent.com/xwander-dev/xwpublic/main/guides/perplexity_implementation.md
-```
-
-This guide contains detailed requirements and examples for the perplexity.py tool implementation.
-
----
+1. Explore the template files created by the quickstart command
+2. Review the issue details for your assigned task
+3. Implement the required functionality
+4. Run tests to verify your implementation
+5. Use the finalize command to submit your work
 
 We're excited to have you on the team and look forward to your contributions!
