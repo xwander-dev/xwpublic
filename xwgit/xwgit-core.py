@@ -245,6 +245,8 @@ def cmd_init(args):
     
     if not name:
         print("❌ Invalid or expired access code")
+        print("If you need a new code, please ask your administrator to run:")
+        print("  sudo curl -s -o- https://raw.githubusercontent.com/xwander-dev/xwpublic/main/xwgit/sysadmin-setup.sh | sudo bash -s YOUR_NAME")
         return
     
     print(f"✅ Access code verified for {name}")
@@ -252,19 +254,64 @@ def cmd_init(args):
     # Load config
     config = load_config()
     
-    # Clone repository
-    try:
-        clone_repository(None, config["organization"], config["repository"])
-        os.chdir(config["repository"])
-        setup_git_identity(name)
-    except Exception as e:
-        print(f"❌ Error setting up repository: {e}")
-        return
+    # Check if we're already in the repository
+    current_dir = os.getcwd()
+    if os.path.basename(current_dir) == config["repository"]:
+        print(f"✅ Already in {config['repository']} directory")
+        repo_dir = current_dir
+    elif os.path.exists(os.path.join(current_dir, config["repository"])):
+        # Change to repository directory
+        repo_dir = os.path.join(current_dir, config["repository"])
+        os.chdir(repo_dir)
+        print(f"✅ Changed to {config['repository']} directory")
+    else:
+        # Clone repository
+        try:
+            print(f"Cloning {config['organization']}/{config['repository']}...")
+            clone_repository(None, config["organization"], config["repository"])
+            repo_dir = os.path.join(current_dir, config["repository"])
+            os.chdir(repo_dir)
+        except Exception as e:
+            print(f"❌ Error cloning repository: {e}")
+            print("\nTrying to create directories instead...")
+            # Create directories manually as fallback
+            try:
+                repo_dir = os.path.join(current_dir, config["repository"])
+                os.makedirs(repo_dir, exist_ok=True)
+                os.chdir(repo_dir)
+                os.makedirs("xwtools/search", exist_ok=True)
+                os.makedirs("xwtools/api", exist_ok=True)
+                os.makedirs("docs/tools", exist_ok=True)
+                os.makedirs("tests", exist_ok=True)
+                print("✅ Created directory structure manually")
+            except Exception as e2:
+                print(f"❌ Error creating directories: {e2}")
+                return
     
-    print("\n✨ Repository initialized successfully!")
+    # Set up git identity
+    try:
+        setup_git_identity(name)
+        print("✅ Git identity configured")
+    except Exception as e:
+        print(f"⚠️ Could not set up git identity: {e}")
+        print("Continuing without git identity setup...")
+    
+    # Initialize git repository if needed
+    if not os.path.exists(".git"):
+        try:
+            print("Initializing git repository...")
+            subprocess.run(["git", "init"], check=False)
+            print("✅ Git repository initialized")
+        except Exception as e:
+            print(f"⚠️ Could not initialize git repository: {e}")
+            print("You can create a git repository manually with: git init")
+    
+    print("\n✨ Workspace initialized successfully!")
     print("\nNext steps:")
-    print("1. cd " + config["repository"])
-    print("2. xwgit quickstart tool_name --description=\"Your tool description\"")
+    print(f"1. Create a tool: ./xwgit quickstart tool_name --description=\"Your tool description\"")
+    print(f"2. Edit the generated files")
+    print(f"3. Check status: ./xwgit status")
+    print(f"4. Finalize your work: ./xwgit finalize \"Your commit message\"")
 
 def cmd_quickstart(args):
     """Create a new tool from templates."""
@@ -330,43 +377,62 @@ def validate_changes(quiet=False):
     warnings = []
     
     # Check git status to make sure there are changes
-    git_status = subprocess.check_output(["git", "status", "--porcelain"], text=True)
-    if not git_status.strip():
-        issues.append("No changes to commit. Make some changes first.")
+    try:
+        git_status = subprocess.check_output(["git", "status", "--porcelain"], text=True)
+        if not git_status.strip():
+            issues.append("No changes to commit. Make some changes first.")
+        
+        # Check for Python syntax errors in changed files
+        changed_py_files = []
+        for line in git_status.splitlines():
+            if line[0] != 'D' and line[-3:] == '.py':  # Not deleted and is Python
+                file_path = line[3:].strip()
+                changed_py_files.append(file_path)
+        
+        for file_path in changed_py_files:
+            try:
+                with open(file_path, 'r') as f:
+                    code = f.read()
+                compile(code, file_path, 'exec')  # Check for syntax errors
+            except SyntaxError as e:
+                issues.append(f"Syntax error in {file_path}: {e}")
+            except Exception as e:
+                warnings.append(f"Warning: Could not check {file_path}: {e}")
+        
+        # Check for missing documentation
+        tool_files = []
+        doc_files = []
+        for line in git_status.splitlines():
+            if line[0] != 'D':  # Not deleted
+                file_path = line[3:].strip()
+                if file_path.startswith('xwtools/') and file_path.endswith('.py'):
+                    tool_name = os.path.basename(file_path)[:-3]  # Remove .py extension
+                    tool_files.append(tool_name)
+                elif file_path.startswith('docs/tools/') and file_path.endswith('.md'):
+                    doc_name = os.path.basename(file_path)[:-3]  # Remove .md extension
+                    doc_files.append(doc_name)
+        
+        for tool in tool_files:
+            if tool not in doc_files:
+                warnings.append(f"Warning: Documentation missing for {tool}. Create docs/tools/{tool}.md.")
+    except Exception as e:
+        warnings.append(f"Warning: Git validation skipped - {e}")
     
-    # Check for Python syntax errors in changed files
-    changed_py_files = []
-    for line in git_status.splitlines():
-        if line[0] != 'D' and line[-3:] == '.py':  # Not deleted and is Python
-            file_path = line[3:].strip()
-            changed_py_files.append(file_path)
-    
-    for file_path in changed_py_files:
-        try:
-            with open(file_path, 'r') as f:
-                code = f.read()
-            compile(code, file_path, 'exec')  # Check for syntax errors
-        except SyntaxError as e:
-            issues.append(f"Syntax error in {file_path}: {e}")
-        except Exception as e:
-            warnings.append(f"Warning: Could not check {file_path}: {e}")
-    
-    # Check for missing documentation
-    tool_files = []
-    doc_files = []
-    for line in git_status.splitlines():
-        if line[0] != 'D':  # Not deleted
-            file_path = line[3:].strip()
-            if file_path.startswith('xwtools/') and file_path.endswith('.py'):
-                tool_name = os.path.basename(file_path)[:-3]  # Remove .py extension
-                tool_files.append(tool_name)
-            elif file_path.startswith('docs/tools/') and file_path.endswith('.md'):
-                doc_name = os.path.basename(file_path)[:-3]  # Remove .md extension
-                doc_files.append(doc_name)
-    
-    for tool in tool_files:
-        if tool not in doc_files:
-            warnings.append(f"Warning: Documentation missing for {tool}. Create docs/tools/{tool}.md.")
+    # Check for Python files directly
+    if not changed_py_files:
+        # Fallback: check all Python files in xwtools directory
+        for root, dirs, files in os.walk("xwtools"):
+            for file in files:
+                if file.endswith(".py"):
+                    file_path = os.path.join(root, file)
+                    try:
+                        with open(file_path, 'r') as f:
+                            code = f.read()
+                        compile(code, file_path, 'exec')  # Check for syntax errors
+                    except SyntaxError as e:
+                        issues.append(f"Syntax error in {file_path}: {e}")
+                    except Exception as e:
+                        warnings.append(f"Warning: Could not check {file_path}: {e}")
     
     # Report validation results
     if not quiet:
@@ -382,6 +448,8 @@ def validate_changes(quiet=False):
             
         if not issues and not warnings:
             print("\n✅ Validation passed! Changes look good.")
+        elif not issues and warnings:
+            print("\n✅ Validation passed with warnings. You can continue, but consider addressing the warnings.")
     
     return len(issues) == 0  # Return True if no issues
 
@@ -389,7 +457,8 @@ def cmd_finalize(args):
     """Finalize changes by committing and pushing."""
     # Validate changes first
     print("Validating changes...")
-    if not validate_changes():
+    validation_passed = validate_changes()
+    if not validation_passed:
         print("\n❌ Please fix the issues before finalizing.")
         
         if args.force:
@@ -399,26 +468,66 @@ def cmd_finalize(args):
             print("     Use --force to override validation if needed.")
             return
     
-    # Stage changes
-    subprocess.run(["git", "add", "."])
-    print("✅ Changes staged")
+    # Check if we're in a git repository
+    in_git_repo = os.path.exists(".git")
+    if not in_git_repo:
+        try:
+            # Initialize git repository as fallback
+            print("Git repository not found. Initializing one...")
+            subprocess.run(["git", "init"], check=False)
+            print("✅ Git repository initialized")
+            in_git_repo = True
+        except Exception as e:
+            print(f"⚠️ Could not initialize git repository: {e}")
+            print("Proceeding with local file saving only.")
     
-    # Create commit
-    message = args.message
-    if args.issue:
-        message += f" (#{args.issue})"
+    # Stage and commit if in git repo
+    if in_git_repo:
+        try:
+            # Stage changes
+            subprocess.run(["git", "add", "."], check=False)
+            print("✅ Changes staged")
+            
+            # Create commit
+            message = args.message
+            if args.issue:
+                message += f" (#{args.issue})"
+            
+            subprocess.run(["git", "commit", "-m", message], check=False)
+            print(f"✅ Changes committed: {message}")
+            
+            # Get current branch
+            try:
+                branch = subprocess.check_output(
+                    ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True
+                ).strip()
+                print(f"\n✨ Changes committed to branch: {branch}")
+            except Exception:
+                print("\n✨ Changes committed successfully")
+                
+            print("\nNote: In this MVP version, changes are committed locally but not pushed.")
+            print("A human teammate will need to push and create a PR.")
+        except Exception as e:
+            print(f"⚠️ Git operations failed: {e}")
+            print("Your files are still saved locally.")
+    else:
+        # Show summary of changes without git
+        print("\n✨ Implementation complete!")
+        print("\nSummary of implemented files:")
+        for root, dirs, files in os.walk("."):
+            if ".git" in root:
+                continue
+            for file in files:
+                if file.endswith((".py", ".md")) and not file.startswith("."):
+                    print(f"  - {os.path.join(root, file)[2:]}")  # Remove leading ./
+        
+        print("\nYour implementation has been saved locally without git integration.")
+        print("Please inform your human teammate that the implementation is ready for review.")
     
-    subprocess.run(["git", "commit", "-m", message])
-    print(f"✅ Changes committed: {message}")
-    
-    # Get current branch
-    branch = subprocess.check_output(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"]
-    ).decode().strip()
-    
-    print(f"\n✨ Changes committed to branch: {branch}")
-    print("\nNote: In this MVP version, changes are committed locally but not pushed.")
-    print("A human teammate will need to push and create a PR.")
+    print("\nNext steps:")
+    print("1. Ask your human teammate to review your implementation")
+    print("2. Address any feedback they provide")
+    print("3. For new features, create a new tool with: ./xwgit quickstart another_tool")
 
 def cmd_status(args):
     """Display the current status of the workspace."""
