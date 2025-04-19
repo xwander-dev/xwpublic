@@ -1,0 +1,33 @@
+{
+  "version": "0.0.1",
+  "lastUpdated": "2025-04-19T19:25:00Z",
+  "hash": "sha256:e2c547d985f4ad107f2746d6c18b65c9a2b08f33a650efd1d4c5bab1e8f131a2",
+  "tokenCount": 7325,
+  "gcagVersion": "0.0.1",
+  "gcagHash": "sha256:pending",
+  "dependencies": [
+    {"agent": "claude-root", "version": "0.0.1", "hash": "sha256:pending"}
+  ],
+  "sections": [
+    {"name": "Repository Structure", "startLine": 5, "endLine": 28, "priority": "P0"},
+    {"name": "Key Files Index", "startLine": 30, "endLine": 46, "priority": "P0"},
+    {"name": "System Responsibilities", "startLine": 48, "endLine": 69, "priority": "P0"},
+    {"name": "Common Workflows", "startLine": 71, "endLine": 112, "priority": "P1"},
+    {"name": "Patch Standards", "startLine": 114, "endLine": 131, "priority": "P2"},
+    {"name": "Recent Updates", "startLine": 133, "endLine": 145, "priority": "P1"}
+  ],
+  "metaData": {
+    "author": "git-agent",
+    "owner": "git-agent",
+    "repoPath": "/home/xwander/xwdev/xwander-repos/xwpublic",
+    "backupRotation": "daily",
+    "maxTokens": 50000,
+    "compressionTarget": 45000
+  },
+  "backups": [
+    {"date": "2025-04-19", "file": "CAG.md.2025-04-19.bak", "hash": "sha256:e2c547d985f4ad107f2746d6c18b65c9a2b08f33a650efd1d4c5bab1e8f131a2"}
+  ],
+  "patches": [
+    {"date": "2025-04-19", "number": "01", "file": "2025-04-19_cag_patch_01.md", "description": "Initial git-agent CAG implementation"}
+  ]
+}
