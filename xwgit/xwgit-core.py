@@ -71,24 +71,32 @@ def generate_access_code(name):
 
 def verify_access_code(code):
     """Verify an access code and return developer name if valid."""
-    codes = load_access_codes()
-    
-    if code not in codes:
-        return None
-    
-    code_data = codes[code]
-    
-    # Check if code is expired
-    if time.time() > code_data["expires_at"]:
+    try:
+        codes = load_access_codes()
+        
+        if code not in codes:
+            print(f"Access code '{code}' not found. Please check your code or ask for a new one.")
+            return None
+        
+        code_data = codes[code]
+        
+        # Check if code is expired
+        if time.time() > code_data["expires_at"]:
+            print(f"Access code expired. It was valid until {time.ctime(code_data['expires_at'])}")
+            print("Please ask for a new access code.")
+            del codes[code]
+            save_access_codes(codes)
+            return None
+        
+        name = code_data["name"]
+        # Remove the code after use
         del codes[code]
         save_access_codes(codes)
+        return name
+    except Exception as e:
+        print(f"Error verifying access code: {e}")
+        print("Please contact your system administrator.")
         return None
-    
-    name = code_data["name"]
-    # Remove the code after use
-    del codes[code]
-    save_access_codes(codes)
-    return name
 
 def setup_git_identity(name):
     """Set up git identity for an AI developer."""
@@ -105,12 +113,14 @@ def clone_repository(token, organization, repository):
 
 def create_tool_files(tool_path, tool_name, tool_type, description):
     """Create tool files from templates."""
-    # Ensure directory exists
-    Path(tool_path).parent.mkdir(exist_ok=True, parents=True)
-    
-    # Create tool file
-    with open(tool_path, "w") as f:
-        f.write(f"""#!/usr/bin/env python3
+    try:
+        # Ensure directory exists
+        Path(tool_path).parent.mkdir(exist_ok=True, parents=True)
+        print(f"Created directory: {os.path.dirname(tool_path)}")
+        
+        # Create tool file
+        with open(tool_path, "w") as f:
+            f.write(f"""#!/usr/bin/env python3
 \"\"\"
 {tool_name}.py - {description}
 \"\"\"
@@ -132,16 +142,26 @@ def main():
 if __name__ == "__main__":
     main()
 """)
+        print(f"Created file: {tool_path}")
+    except Exception as e:
+        print(f"Error creating tool file: {e}")
+        raise
     
     # Make executable
-    os.chmod(tool_path, 0o755)
+    try:
+        os.chmod(tool_path, 0o755)
+        print(f"Made executable: {tool_path}")
+    except Exception as e:
+        print(f"Warning: Could not make file executable: {e}")
     
     # Create docs file
-    docs_path = f"docs/tools/{tool_name}.md"
-    Path(docs_path).parent.mkdir(exist_ok=True, parents=True)
-    
-    with open(docs_path, "w") as f:
-        f.write(f"""# {tool_name}.py
+    try:
+        docs_path = f"docs/tools/{tool_name}.md"
+        Path(docs_path).parent.mkdir(exist_ok=True, parents=True)
+        print(f"Created directory: {os.path.dirname(docs_path)}")
+        
+        with open(docs_path, "w") as f:
+            f.write(f"""# {tool_name}.py
 
 ## Overview
 
@@ -158,13 +178,18 @@ if __name__ == "__main__":
 - Feature 1 (TODO)
 - Feature 2 (TODO)
 """)
+        print(f"Created file: {docs_path}")
+    except Exception as e:
+        print(f"Error creating docs file: {e}")
     
     # Create test file
-    test_path = f"tests/test_{tool_name}.py"
-    Path(test_path).parent.mkdir(exist_ok=True, parents=True)
-    
-    with open(test_path, "w") as f:
-        f.write(f"""#!/usr/bin/env python3
+    try:
+        test_path = f"tests/test_{tool_name}.py"
+        Path(test_path).parent.mkdir(exist_ok=True, parents=True)
+        print(f"Created directory: {os.path.dirname(test_path)}")
+        
+        with open(test_path, "w") as f:
+            f.write(f"""#!/usr/bin/env python3
 \"\"\"
 Test suite for {tool_name}.py
 \"\"\"
@@ -186,6 +211,9 @@ class Test{tool_name.capitalize()}(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 """)
+        print(f"Created file: {test_path}")
+    except Exception as e:
+        print(f"Error creating test file: {e}")
     
     print(f"✅ Created tool files for {tool_name}")
     print(f"  - Tool implementation: {tool_path}")
@@ -240,31 +268,61 @@ def cmd_init(args):
 
 def cmd_quickstart(args):
     """Create a new tool from templates."""
-    # Determine tool type directory
-    if args.type == "search":
-        tool_dir = "search"
-    elif args.type == "api":
-        tool_dir = "api"
-    else:
-        tool_dir = args.type
-    
-    # Set up paths
-    tool_path = f"xwtools/{tool_dir}/{args.name}.py"
-    
-    # Create a feature branch
-    branch_name = f"feature/{args.name}-{int(time.time())}"
-    subprocess.run(["git", "checkout", "-b", branch_name])
-    print(f"✅ Created branch: {branch_name}")
-    
-    # Create tool files
-    create_tool_files(tool_path, args.name, tool_dir, args.description)
-    
-    print("\n✨ Tool scaffolding complete!")
-    print("\nNext steps:")
-    print(f"1. Edit {tool_path} to implement your tool")
-    print(f"2. Edit docs/tools/{args.name}.md to document your tool")
-    print(f"3. Run tests with: python tests/test_{args.name}.py")
-    print("4. When finished, run: xwgit finalize \"Implement tool functionality\"")
+    try:
+        # Check if we're in XwDevTools directory
+        current_dir = os.getcwd()
+        if not os.path.exists(os.path.join(current_dir, "XwDevTools")):
+            # Try to change to XwDevTools if it exists
+            if os.path.exists("XwDevTools"):
+                os.chdir("XwDevTools")
+                print("✅ Changed to XwDevTools directory")
+            else:
+                print("❌ XwDevTools directory not found. Please run 'xwgit init' first.")
+                return
+        
+        # Determine tool type directory
+        tool_dir = "search"  # Default
+        if hasattr(args, 'type'):
+            if args.type == "search":
+                tool_dir = "search"
+            elif args.type == "api":
+                tool_dir = "api"
+            else:
+                tool_dir = args.type
+        
+        # Set up paths
+        tool_path = f"xwtools/{tool_dir}/{args.name}.py"
+        
+        # Make sure xwtools directory exists
+        if not os.path.exists("xwtools"):
+            os.makedirs("xwtools", exist_ok=True)
+            print("✅ Created xwtools directory")
+        
+        if not os.path.exists(f"xwtools/{tool_dir}"):
+            os.makedirs(f"xwtools/{tool_dir}", exist_ok=True)
+            print(f"✅ Created xwtools/{tool_dir} directory")
+        
+        # Try to create a feature branch
+        try:
+            branch_name = f"feature/{args.name}-{int(time.time())}"
+            subprocess.run(["git", "checkout", "-b", branch_name], check=False)
+            print(f"✅ Created branch: {branch_name}")
+        except Exception as e:
+            print(f"⚠️ Could not create git branch: {e}")
+            print("Continuing without branch creation...")
+        
+        # Create tool files
+        create_tool_files(tool_path, args.name, tool_dir, args.description)
+        
+        print("\n✨ Tool scaffolding complete!")
+        print("\nNext steps:")
+        print(f"1. Edit {tool_path} to implement your tool")
+        print(f"2. Edit docs/tools/{args.name}.md to document your tool")
+        print(f"3. Run tests with: python tests/test_{args.name}.py")
+        print("4. When finished, run: xwgit finalize \"Implement tool functionality\"")
+    except Exception as e:
+        print(f"❌ Error during quickstart: {e}")
+        print("Please check error message and try again, or contact your administrator.")
 
 def validate_changes(quiet=False):
     """Validate that changes are ready to commit."""
@@ -415,7 +473,7 @@ def cmd_status(args):
 
 def cmd_help(args):
     """Show detailed help for a specific command."""
-    command = args.command if args.command else "general"
+    command = args.command if hasattr(args, 'command') and args.command else "general"
     
     help_text = {
         "general": """
