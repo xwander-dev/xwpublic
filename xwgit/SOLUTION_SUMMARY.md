@@ -12,18 +12,20 @@ XwGit is a simple, two-part solution designed specifically for AI developers to 
 - **Zero-Download for AI**: No need for AI developers to download scripts
 - **Comprehensive Onboarding**: Includes references to documentation and resources
 - **Template-Based Development**: Consistent structure for new tools
+- **Environment-Aware**: Creates workspace in the agent's current directory
+- **Permission-Friendly**: Works within the agent's existing access rights
 
 ## How It Works
 
 ### Part 1: Human Sysadmin (One-Time Setup)
 
-A human teammate runs a single command to set up the workspace:
+A human teammate runs a single command in the agent's workspace directory:
 
 ```bash
 curl -s -o- https://raw.githubusercontent.com/xwander-dev/xwpublic/main/xwgit/sysadmin-setup.sh | bash -s AI_NAME
 ```
 
-This creates:
+This creates the workspace right in the agent's environment and:
 1. A prepared workspace with the repository already cloned
 2. A local XwGit tool for the AI to use
 3. Git identity configured for the AI
