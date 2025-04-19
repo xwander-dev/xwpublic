@@ -62,13 +62,30 @@ chown ${DIR_OWNER}:${DIR_GROUP} "${WORKSPACE_DIR}/bin/xwgit"
 # Clone the repository
 echo -e "${YELLOW}Cloning target repository...${NC}"
 cd "${AI_WORKSPACE}"
-if [ ! -d "XwDevTools" ]; then
-  git clone https://github.com/xwander-dev/xwpublic.git XwDevTools
-  cd XwDevTools
-else
-  cd XwDevTools
-  git pull
+
+# Add directory to Git safe directories to prevent "dubious ownership" errors
+git config --global --add safe.directory "${AI_WORKSPACE}/XwDevTools" || true
+
+# Ensure the XwDevTools directory doesn't exist or is empty
+if [ -d "XwDevTools" ]; then
+  rm -rf "XwDevTools" || {
+    echo -e "${RED}Could not remove existing XwDevTools directory. Try manually with:${NC}"
+    echo "rm -rf ${AI_WORKSPACE}/XwDevTools"
+    echo ""
+  }
 fi
+
+# Clone repository
+echo -e "${YELLOW}Cloning fresh repository...${NC}"
+git clone https://github.com/xwander-dev/xwpublic.git XwDevTools || {
+  echo -e "${RED}Failed to clone repository. Check your internet connection.${NC}"
+  exit 1
+}
+
+cd XwDevTools || {
+  echo -e "${RED}Failed to enter the repository directory.${NC}"
+  exit 1
+}
 
 # Set up git identity for the AI
 git config --local user.name "AI-${AI_NAME}"
