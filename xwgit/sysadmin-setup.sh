@@ -1,6 +1,6 @@
 #!/bin/bash
 # sysadmin-setup.sh - Complete setup script for AI developer workspaces
-# Usage: curl -s -o- https://raw.githubusercontent.com/xwander-dev/xwpublic/main/xwgit/sysadmin-setup.sh | bash -s AI_NAME
+# Usage: sudo curl -s -o- https://raw.githubusercontent.com/xwander-dev/xwpublic/main/xwgit/sysadmin-setup.sh | bash -s AI_NAME
 
 set -e
 
@@ -11,6 +11,18 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 BOLD='\033[1m'
+
+# Check if running as root
+if [ "$(id -u)" != "0" ]; then
+   echo -e "${RED}This script must be run as root (sudo)${NC}" 
+   exit 1
+fi
+
+# Detect the owner and group of the current directory
+DIR_OWNER=$(stat -c '%U' "$(pwd)")
+DIR_GROUP=$(stat -c '%G' "$(pwd)")
+
+echo -e "${YELLOW}Detected directory ownership: ${DIR_OWNER}:${DIR_GROUP}${NC}"
 
 # Get AI developer name from args
 AI_NAME="${1:-ai-developer}"
@@ -34,11 +46,18 @@ echo -e "${YELLOW}Creating workspace directories in: ${CURRENT_DIR}${NC}"
 mkdir -p "${WORKSPACE_DIR}"
 mkdir -p "${AI_WORKSPACE}"
 
+# Set correct ownership
+chown -R ${DIR_OWNER}:${DIR_GROUP} "${WORKSPACE_DIR}"
+chown -R ${DIR_OWNER}:${DIR_GROUP} "${AI_WORKSPACE}"
+chmod -R 775 "${WORKSPACE_DIR}"
+chmod -R 775 "${AI_WORKSPACE}"
+
 # Download XwGit core script
 echo -e "${YELLOW}Downloading XwGit tools...${NC}"
 mkdir -p "${WORKSPACE_DIR}/bin"
 curl -s -o "${WORKSPACE_DIR}/bin/xwgit" https://raw.githubusercontent.com/xwander-dev/xwpublic/main/xwgit/xwgit-core.py
 chmod +x "${WORKSPACE_DIR}/bin/xwgit"
+chown ${DIR_OWNER}:${DIR_GROUP} "${WORKSPACE_DIR}/bin/xwgit"
 
 # Clone the repository
 echo -e "${YELLOW}Cloning target repository...${NC}"
@@ -71,9 +90,11 @@ cat > "${AI_WORKSPACE}/xwgit" << EOF
 ${WORKSPACE_DIR}/bin/xwgit "\$@"
 EOF
 chmod +x "${AI_WORKSPACE}/xwgit"
+chown ${DIR_OWNER}:${DIR_GROUP} "${AI_WORKSPACE}/xwgit"
 
 # Extract access code
 ACCESS_CODE=$(grep "Code:" "${AI_WORKSPACE}/access_code.txt" | awk '{print $2}')
+chown ${DIR_OWNER}:${DIR_GROUP} "${AI_WORKSPACE}/access_code.txt"
 
 # Create comprehensive AI prompt file
 cat > "${AI_WORKSPACE}/AI_PROMPT.md" << EOF
@@ -172,6 +193,25 @@ Your workspace is ready at: ${AI_WORKSPACE}
 
 That's it! Your changes will be committed and ready for review.
 EOF
+
+# Set permissions for all created files
+chown ${DIR_OWNER}:${DIR_GROUP} "${AI_WORKSPACE}/AI_PROMPT.md"
+chown ${DIR_OWNER}:${DIR_GROUP} "${AI_WORKSPACE}/GUIDE.md"
+
+# Final permission fix to ensure everything is accessible
+find "${WORKSPACE_DIR}" -type d -exec chmod 775 {} \;
+find "${AI_WORKSPACE}" -type d -exec chmod 775 {} \;
+find "${WORKSPACE_DIR}" -type f -exec chmod 664 {} \;
+find "${AI_WORKSPACE}" -type f -exec chmod 664 {} \;
+find "${WORKSPACE_DIR}" -name "*.py" -exec chmod 775 {} \;
+find "${WORKSPACE_DIR}" -name "xwgit" -exec chmod 775 {} \;
+find "${AI_WORKSPACE}" -name "xwgit" -exec chmod 775 {} \;
+
+# Make sure Git repo has correct permissions
+if [ -d "${AI_WORKSPACE}/XwDevTools" ]; then
+  chown -R ${DIR_OWNER}:${DIR_GROUP} "${AI_WORKSPACE}/XwDevTools"
+  chmod -R 775 "${AI_WORKSPACE}/XwDevTools"
+fi
 
 # Access code was already extracted above
 
