@@ -71,19 +71,91 @@ cat > "${AI_WORKSPACE}/xwgit" << 'EOF'
 EOF
 chmod +x "${AI_WORKSPACE}/xwgit"
 
-# Create helpful guide file
+# Extract access code
+ACCESS_CODE=$(grep "Code:" "${AI_WORKSPACE}/access_code.txt" | awk '{print $2}')
+
+# Create comprehensive AI prompt file
+cat > "${AI_WORKSPACE}/AI_PROMPT.md" << EOF
+# XwanderDev Onboarding: Welcome ${AI_NAME}!
+
+Your workspace has been prepared at: ${AI_WORKSPACE}
+
+## Part 1: XwanderDev Introduction
+
+Welcome to the XwanderDev team! Before starting development work, please review our key resources to understand our systems, standards and processes:
+
+### Team Resources
+- [Team Overview](https://github.com/xwander-dev/xwpublic/blob/main/README.md)
+- [Development Standards](https://github.com/xwander-dev/xwpublic/blob/main/guides/onboarding.md)
+- [Tool Documentation](https://github.com/xwander-dev/xwpublic/tree/main/xwgit)
+
+### Project Structure
+Our repositories follow a standard structure with:
+- \`xwtools/\`: Core implementation of utilities
+- \`docs/\`: Documentation for each tool
+- \`tests/\`: Test suites for validation
+
+## Part 2: Development Workflow (3 Simple Steps)
+
+We've created a streamlined Git workflow specifically for AI developers:
+
+### 1. Initialize Your Session
+\`\`\`bash
+cd ${AI_WORKSPACE}
+./xwgit init --code ${ACCESS_CODE}
+\`\`\`
+
+### 2. Create Your First Tool
+\`\`\`bash
+./xwgit quickstart your_tool_name --description="A useful utility for XwanderDev" --type=search
+\`\`\`
+
+This creates:
+- Tool implementation at \`XwDevTools/xwtools/search/your_tool_name.py\`
+- Documentation at \`XwDevTools/docs/tools/your_tool_name.md\`
+- Test file at \`XwDevTools/tests/test_your_tool_name.py\`
+
+### 3. Implement and Finalize
+After implementing your tool:
+\`\`\`bash
+./xwgit finalize "Implement your_tool_name functionality"
+\`\`\`
+
+## Part 3: Development Best Practices
+
+When implementing tools for XwanderDev:
+
+1. **Follow Existing Patterns**: Examine other tools in the repository to understand our coding style
+2. **Write Clear Documentation**: Update the generated markdown with comprehensive usage examples
+3. **Include Test Cases**: Add meaningful tests to validate your implementation
+4. **Use Descriptive Commit Messages**: Clearly explain what your changes accomplish
+
+## Part 4: After Completion
+
+After you've finalized your work:
+1. Let your human teammate know that your implementation is ready for review
+2. Be prepared to address feedback or questions about your implementation
+3. Your changes will be reviewed, merged, and deployed by the team
+
+## Need Help?
+
+If you encounter any issues during development, ask your human teammate for assistance.
+
+Good luck with your first contribution to XwanderDev!
+EOF
+
+# Also create a simple guide file
 cat > "${AI_WORKSPACE}/GUIDE.md" << EOF
 # AI Developer Guide for ${AI_NAME}
 
 Your workspace is ready at: ${AI_WORKSPACE}
 
-## Getting Started
+## Quick Start
 
-1. Use your access code to initialize your session:
+1. Initialize with your access code:
    \`\`\`bash
-   ./xwgit init --code YOUR_ACCESS_CODE
+   ./xwgit init --code ${ACCESS_CODE}
    \`\`\`
-   (Your access code can be found in access_code.txt)
 
 2. Create a new tool:
    \`\`\`bash
@@ -100,23 +172,36 @@ Your workspace is ready at: ${AI_WORKSPACE}
 That's it! Your changes will be committed and ready for review.
 EOF
 
-# Extract access code for the output
-ACCESS_CODE=$(grep "Code:" "${AI_WORKSPACE}/access_code.txt" | awk '{print $2}')
+# Access code was already extracted above
 
 echo -e "${GREEN}${BOLD}✅ Setup complete!${NC}"
 echo ""
 echo -e "${CYAN}${BOLD}=========================================${NC}"
-echo -e "${CYAN}${BOLD} AI Developer Information ${NC}"
+echo -e "${CYAN}${BOLD} AI Onboarding Package Ready ${NC}"
 echo -e "${CYAN}${BOLD}=========================================${NC}"
 echo -e "Workspace: ${GREEN}${AI_WORKSPACE}${NC}"
 echo -e "Access Code: ${GREEN}${ACCESS_CODE}${NC}"
 echo ""
-echo -e "${YELLOW}Instructions for AI developer:${NC}"
-echo "1. cd ${AI_WORKSPACE}"
-echo "2. ./xwgit init --code ${ACCESS_CODE}"
-echo "3. ./xwgit quickstart my_tool --description=\"A useful utility\" --type=search"
-echo "4. Edit the generated files"
-echo "5. ./xwgit finalize \"Implement my_tool functionality\""
+echo -e "${YELLOW}Next Steps:${NC}"
+echo -e "1. ${GREEN}Provide this prompt file to your AI developer:${NC}"
+echo -e "   ${CYAN}${AI_WORKSPACE}/AI_PROMPT.md${NC}"
 echo ""
-echo -e "${YELLOW}To review AI contributions:${NC}"
-echo "cd ${AI_WORKSPACE}/XwDevTools && git log -p"
+echo -e "2. ${GREEN}The AI will follow these steps:${NC}"
+echo "   - Review XwanderDev documentation"
+echo "   - Initialize workspace with ./xwgit init --code ${ACCESS_CODE}"
+echo "   - Create a tool with ./xwgit quickstart"
+echo "   - Implement functionality"
+echo "   - Finalize with ./xwgit finalize"
+echo ""
+echo -e "3. ${GREEN}After the AI completes their work:${NC}"
+echo "   - Review changes: cd ${AI_WORKSPACE}/XwDevTools && git log -p"
+echo "   - Push changes if approved: git push origin HEAD"
+echo ""
+echo -e "${CYAN}The AI_PROMPT.md file includes:${NC}"
+echo "- Introduction to XwanderDev resources"
+echo "- Streamlined 3-step development workflow"
+echo "- Best practices for implementation"
+echo "- All necessary commands with your workspace path and access code"
+echo ""
+echo -e "${YELLOW}Complete onboarding in one command:${NC}"
+echo -e "cat ${AI_WORKSPACE}/AI_PROMPT.md | your-ai-assistant-command"
