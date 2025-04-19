@@ -63,7 +63,7 @@ def generate_access_code(name):
     codes[code] = {
         "name": name,
         "created_at": time.time(),
-        "expires_at": time.time() + 1800  # 30 minutes
+        "expires_at": time.time() + 86400  # 24 hours (increased from 30 minutes)
     }
     
     save_access_codes(codes)
@@ -266,8 +266,81 @@ def cmd_quickstart(args):
     print(f"3. Run tests with: python tests/test_{args.name}.py")
     print("4. When finished, run: xwgit finalize \"Implement tool functionality\"")
 
+def validate_changes(quiet=False):
+    """Validate that changes are ready to commit."""
+    issues = []
+    warnings = []
+    
+    # Check git status to make sure there are changes
+    git_status = subprocess.check_output(["git", "status", "--porcelain"], text=True)
+    if not git_status.strip():
+        issues.append("No changes to commit. Make some changes first.")
+    
+    # Check for Python syntax errors in changed files
+    changed_py_files = []
+    for line in git_status.splitlines():
+        if line[0] != 'D' and line[-3:] == '.py':  # Not deleted and is Python
+            file_path = line[3:].strip()
+            changed_py_files.append(file_path)
+    
+    for file_path in changed_py_files:
+        try:
+            with open(file_path, 'r') as f:
+                code = f.read()
+            compile(code, file_path, 'exec')  # Check for syntax errors
+        except SyntaxError as e:
+            issues.append(f"Syntax error in {file_path}: {e}")
+        except Exception as e:
+            warnings.append(f"Warning: Could not check {file_path}: {e}")
+    
+    # Check for missing documentation
+    tool_files = []
+    doc_files = []
+    for line in git_status.splitlines():
+        if line[0] != 'D':  # Not deleted
+            file_path = line[3:].strip()
+            if file_path.startswith('xwtools/') and file_path.endswith('.py'):
+                tool_name = os.path.basename(file_path)[:-3]  # Remove .py extension
+                tool_files.append(tool_name)
+            elif file_path.startswith('docs/tools/') and file_path.endswith('.md'):
+                doc_name = os.path.basename(file_path)[:-3]  # Remove .md extension
+                doc_files.append(doc_name)
+    
+    for tool in tool_files:
+        if tool not in doc_files:
+            warnings.append(f"Warning: Documentation missing for {tool}. Create docs/tools/{tool}.md.")
+    
+    # Report validation results
+    if not quiet:
+        if issues:
+            print("\n❌ Validation found issues that must be fixed:")
+            for issue in issues:
+                print(f"  - {issue}")
+            
+        if warnings:
+            print("\n⚠️ Validation found items to consider:")
+            for warning in warnings:
+                print(f"  - {warning}")
+            
+        if not issues and not warnings:
+            print("\n✅ Validation passed! Changes look good.")
+    
+    return len(issues) == 0  # Return True if no issues
+
 def cmd_finalize(args):
     """Finalize changes by committing and pushing."""
+    # Validate changes first
+    print("Validating changes...")
+    if not validate_changes():
+        print("\n❌ Please fix the issues before finalizing.")
+        
+        if args.force:
+            print("\n⚠️ --force option used. Continuing despite issues...")
+        else:
+            print("\nTip: Run ./xwgit status to see current state.")
+            print("     Use --force to override validation if needed.")
+            return
+    
     # Stage changes
     subprocess.run(["git", "add", "."])
     print("✅ Changes staged")
@@ -289,6 +362,145 @@ def cmd_finalize(args):
     print("\nNote: In this MVP version, changes are committed locally but not pushed.")
     print("A human teammate will need to push and create a PR.")
 
+def cmd_status(args):
+    """Display the current status of the workspace."""
+    print("XwGit Workspace Status")
+    print("=====================")
+    
+    # Check git status
+    try:
+        git_status = subprocess.check_output(["git", "status", "--porcelain"], text=True)
+        branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True).strip()
+        
+        print(f"Current branch: {branch}")
+        
+        if git_status.strip():
+            print("\nUncommitted changes:")
+            for line in git_status.splitlines():
+                print(f"  {line}")
+        else:
+            print("\nWorking directory clean. No uncommitted changes.")
+            
+        # Check last commit
+        last_commit = subprocess.check_output(
+            ["git", "log", "-1", "--pretty=format:%h - %s (%ar)"], 
+            text=True
+        ).strip()
+        print(f"\nLast commit: {last_commit}")
+        
+        # Show tool files
+        try:
+            tools_path = "xwtools"
+            if os.path.exists(tools_path):
+                print("\nTools in workspace:")
+                for root, dirs, files in os.walk(tools_path):
+                    for file in files:
+                        if file.endswith(".py"):
+                            rel_path = os.path.join(root, file)
+                            print(f"  {rel_path}")
+            else:
+                print("\nNo tools directory found.")
+        except Exception:
+            pass
+            
+    except subprocess.CalledProcessError:
+        print("Not in a git repository or git is not installed.")
+    except Exception as e:
+        print(f"Error checking status: {e}")
+        
+    print("\nNext steps:")
+    print("1. Create a tool: ./xwgit quickstart tool_name")
+    print("2. Edit the tool files")
+    print("3. Finalize changes: ./xwgit finalize \"Implement functionality\"")
+
+def cmd_help(args):
+    """Show detailed help for a specific command."""
+    command = args.command if args.command else "general"
+    
+    help_text = {
+        "general": """
+XwGit - Streamlined GitHub Workflow for AI Developers
+
+Commands:
+  init        Initialize workspace with access code
+  quickstart  Create a new tool from templates
+  status      Show current workspace status
+  finalize    Commit changes with a message
+  help        Show help for specific commands
+
+Example workflow:
+  ./xwgit init --code YOUR_ACCESS_CODE
+  ./xwgit quickstart my_tool --description="Useful utility"
+  # Edit the generated files
+  ./xwgit status
+  ./xwgit finalize "Implement my_tool functionality"
+""",
+        "init": """
+Initialize the workspace with your access code.
+
+Usage:
+  ./xwgit init --code YOUR_ACCESS_CODE
+
+This command will:
+1. Verify your access code
+2. Set up your development environment
+3. Prepare for tool creation
+
+After initialization, use 'quickstart' to create your first tool.
+""",
+        "quickstart": """
+Create a new tool from templates.
+
+Usage:
+  ./xwgit quickstart tool_name --description="Tool description" --type=search
+
+Options:
+  --description  Brief description of the tool
+  --type         Tool type (search, api, etc.)
+
+This command will:
+1. Create a feature branch
+2. Generate tool implementation file
+3. Generate documentation file
+4. Generate test file
+
+Example:
+  ./xwgit quickstart web_search --description="Web search utility" --type=search
+""",
+        "status": """
+Show the current status of your workspace.
+
+Usage:
+  ./xwgit status
+
+This command will display:
+1. Current branch
+2. Uncommitted changes
+3. Last commit
+4. Tools in your workspace
+5. Suggested next steps
+""",
+        "finalize": """
+Commit your changes with a message.
+
+Usage:
+  ./xwgit finalize "Your commit message" [--issue=NUMBER]
+
+Options:
+  --issue  Associated issue number
+
+This command will:
+1. Stage all changes
+2. Create a commit with your message
+3. Prepare for review
+
+Example:
+  ./xwgit finalize "Implement web search functionality" --issue=42
+"""
+    }
+    
+    print(help_text.get(command, "Help topic not found."))
+
 def main():
     """Main entry point for xwgit CLI."""
     parser = argparse.ArgumentParser(description="XwGit - GitHub access for AI developers")
@@ -308,10 +520,18 @@ def main():
     quick_parser.add_argument("--description", default="A useful tool", help="Tool description")
     quick_parser.add_argument("--type", default="search", help="Tool type (search, api, etc.)")
     
+    # Status command
+    status_parser = subparsers.add_parser("status", help="Show current workspace status")
+    
     # Finalize command
     final_parser = subparsers.add_parser("finalize", help="Finalize changes")
     final_parser.add_argument("message", help="Commit message")
     final_parser.add_argument("--issue", type=int, help="Issue number")
+    final_parser.add_argument("--force", action="store_true", help="Force finalization even with validation issues")
+    
+    # Help command
+    help_parser = subparsers.add_parser("help", help="Show detailed help for commands")
+    help_parser.add_argument("command", nargs="?", help="Command to get help on")
     
     args = parser.parse_args()
     
@@ -321,10 +541,14 @@ def main():
         cmd_init(args)
     elif args.command == "quickstart":
         cmd_quickstart(args)
+    elif args.command == "status":
+        cmd_status(args)
     elif args.command == "finalize":
         cmd_finalize(args)
+    elif args.command == "help":
+        cmd_help(args)
     else:
-        parser.print_help()
+        cmd_help(argparse.Namespace(command="general"))
 
 if __name__ == "__main__":
     main()

@@ -79,7 +79,7 @@ echo -e "${YELLOW}Creating project structure...${NC}"
 mkdir -p xwtools/search xwtools/api docs/tools tests
 
 # Generate access code
-echo -e "${YELLOW}Generating access code...${NC}"
+echo -e "${YELLOW}Generating access code (valid for 24 hours)...${NC}"
 cd "${WORKSPACE_DIR}"
 "${WORKSPACE_DIR}/bin/xwgit" generate-code "${AI_NAME}" > "${AI_WORKSPACE}/access_code.txt"
 
